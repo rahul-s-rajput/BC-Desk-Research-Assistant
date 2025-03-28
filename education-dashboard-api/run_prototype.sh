@@ -1,0 +1,8 @@
+#!/bin/bash
+echo "Installing dependencies for prototype.py..."
+pip install --quiet "langchain>=0.3.21" "langchain-community>=0.3.20" "langchain-openai>=0.3.10" "openai>=1.68.2" "pydantic>=2.5.2"
+echo "Running prototype.py..."
+python prototype.py "$@"
+echo "Restoring original environment..."
+pip install --quiet -r requirements.txt
+echo "Done." 

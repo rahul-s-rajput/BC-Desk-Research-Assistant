@@ -1,11 +1,5 @@
-'use client'
-
-import EducationDashboard from './components/education-dashboard';
+import { redirect } from "next/navigation"
 
 export default function Home() {
-  return (
-    <main>
-      <EducationDashboard />
-    </main>
-  );
+  redirect("/dashboard")
 }

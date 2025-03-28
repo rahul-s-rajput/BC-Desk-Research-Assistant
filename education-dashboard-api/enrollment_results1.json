@@ -1,0 +1,222 @@
+{
+    "2019-20-Enrolment-Report.pdf": {
+        "university": "University Of British Columbia",
+        "academic_year": 2020,
+        "total_enrollment_headcount": 67958,
+        "domestic_students_headcount": 49675,
+        "international_students_headcount": 18283,
+        "indigenous_students_headcount": 1856,
+        "completion_rate_undergraduate": 0.91,
+        "completion_rate_master": 0.0,
+        "completion_rate_phd": 0.0
+    },
+    "2021-22-Enrolment-Report.pdf": {
+        "university": "University Of British Columbia",
+        "academic_year": 2022,
+        "total_enrollment_headcount": 70757,
+        "domestic_students_headcount": 0,
+        "international_students_headcount": 0,
+        "indigenous_students_headcount": 2165,
+        "completion_rate_undergraduate": 0.0,
+        "completion_rate_master": 0.0,
+        "completion_rate_phd": 0.0
+    },
+    "rsr.report.1204.pdf": {
+        "university": "Simon Fraser University",
+        "academic_year": 2020,
+        "total_enrollment_headcount": 18444,
+        "domestic_students_headcount": 13597,
+        "international_students_headcount": 4135,
+        "indigenous_students_headcount": 0,
+        "completion_rate_undergraduate": 0.0,
+        "completion_rate_master": 0.0,
+        "completion_rate_phd": 0.0
+    },
+    "rsr.report.1207.pdf": {
+        "university": "Simon Fraser University",
+        "academic_year": 2020,
+        "total_enrollment_headcount": 25700,
+        "domestic_students_headcount": 20252,
+        "international_students_headcount": 5448,
+        "indigenous_students_headcount": 0,
+        "completion_rate_undergraduate": 0.0,
+        "completion_rate_master": 0.0,
+        "completion_rate_phd": 0.0
+    },
+    "rsr.report.1211.pdf": {
+        "university": "Simon Fraser University",
+        "academic_year": 2021,
+        "total_enrollment_headcount": 24369,
+        "domestic_students_headcount": 18209,
+        "international_students_headcount": 4902,
+        "indigenous_students_headcount": 0,
+        "completion_rate_undergraduate": 0.0,
+        "completion_rate_master": 0.0,
+        "completion_rate_phd": 0.0
+    },
+    "rsr.report.1214.pdf": {
+        "university": "Simon Fraser University",
+        "academic_year": 2021,
+        "total_enrollment_headcount": 18264,
+        "domestic_students_headcount": 13322,
+        "international_students_headcount": 4189,
+        "indigenous_students_headcount": 0,
+        "completion_rate_undergraduate": 0.0,
+        "completion_rate_master": 0.0,
+        "completion_rate_phd": 0.0
+    },
+    "rsr.report.1217.pdf": {
+        "university": "Simon Fraser University",
+        "academic_year": 2021,
+        "total_enrollment_headcount": 25595,
+        "domestic_students_headcount": 20309,
+        "international_students_headcount": 5286,
+        "indigenous_students_headcount": 0,
+        "completion_rate_undergraduate": 0.0,
+        "completion_rate_master": 0.0,
+        "completion_rate_phd": 0.0
+    },
+    "rsr.report.1221.pdf": {
+        "university": "Simon Fraser University",
+        "academic_year": 2022,
+        "total_enrollment_headcount": 23958,
+        "domestic_students_headcount": 18168,
+        "international_students_headcount": 4696,
+        "indigenous_students_headcount": 0,
+        "completion_rate_undergraduate": 0.0,
+        "completion_rate_master": 0.0,
+        "completion_rate_phd": 0.0
+    },
+    "rsr.report.1224.pdf": {
+        "university": "Simon Fraser University",
+        "academic_year": 2022,
+        "total_enrollment_headcount": 16529,
+        "domestic_students_headcount": 12126,
+        "international_students_headcount": 3811,
+        "indigenous_students_headcount": 0,
+        "completion_rate_undergraduate": 0.0,
+        "completion_rate_master": 0.0,
+        "completion_rate_phd": 0.0
+    },
+    "rsr.report.1227.pdf": {
+        "university": "Simon Fraser University",
+        "academic_year": 2022,
+        "total_enrollment_headcount": 25689,
+        "domestic_students_headcount": 20625,
+        "international_students_headcount": 5064,
+        "indigenous_students_headcount": 0,
+        "completion_rate_undergraduate": 0.0,
+        "completion_rate_master": 0.0,
+        "completion_rate_phd": 0.0
+    },
+    "rsr.report.1231.pdf": {
+        "university": "Simon Fraser University",
+        "academic_year": 2023,
+        "total_enrollment_headcount": 24061,
+        "domestic_students_headcount": 18605,
+        "international_students_headcount": 4391,
+        "indigenous_students_headcount": 0,
+        "completion_rate_undergraduate": 0.0,
+        "completion_rate_master": 0.0,
+        "completion_rate_phd": 0.0
+    },
+    "rsr.report.1234.pdf": {
+        "university": "Simon Fraser University",
+        "academic_year": 2023,
+        "total_enrollment_headcount": 15903,
+        "domestic_students_headcount": 12355,
+        "international_students_headcount": 3247,
+        "indigenous_students_headcount": 0,
+        "completion_rate_undergraduate": 0.0,
+        "completion_rate_master": 0.0,
+        "completion_rate_phd": 0.0
+    },
+    "rsr.report.1237.pdf": {
+        "university": "Simon Fraser University",
+        "academic_year": 2023,
+        "total_enrollment_headcount": 25714,
+        "domestic_students_headcount": 21527,
+        "international_students_headcount": 4187,
+        "indigenous_students_headcount": 0,
+        "completion_rate_undergraduate": 0.0,
+        "completion_rate_master": 0.0,
+        "completion_rate_phd": 0.0
+    },
+    "rsr.report.1241.pdf": {
+        "university": "Simon Fraser University",
+        "academic_year": 2024,
+        "total_enrollment_headcount": 24384,
+        "domestic_students_headcount": 19343,
+        "international_students_headcount": 4015,
+        "indigenous_students_headcount": 0,
+        "completion_rate_undergraduate": 0.0,
+        "completion_rate_master": 0.0,
+        "completion_rate_phd": 0.0
+    },
+    "rsr.report.1244.pdf": {
+        "university": "Simon Fraser University",
+        "academic_year": 2024,
+        "total_enrollment_headcount": 16320,
+        "domestic_students_headcount": 12945,
+        "international_students_headcount": 2894,
+        "indigenous_students_headcount": 0,
+        "completion_rate_undergraduate": 0.0,
+        "completion_rate_master": 0.0,
+        "completion_rate_phd": 0.0
+    },
+    "rsr.report.1247.pdf": {
+        "university": "Simon Fraser University",
+        "academic_year": 2024,
+        "total_enrollment_headcount": 25568,
+        "domestic_students_headcount": 0,
+        "international_students_headcount": 0,
+        "indigenous_students_headcount": 0,
+        "completion_rate_undergraduate": 0.0,
+        "completion_rate_master": 0.0,
+        "completion_rate_phd": 0.0
+    },
+    "rsr.report.1251.pdf": {
+        "university": "Simon Fraser University",
+        "academic_year": 2025,
+        "total_enrollment_headcount": 24238,
+        "domestic_students_headcount": 19572,
+        "international_students_headcount": 3583,
+        "indigenous_students_headcount": 0,
+        "completion_rate_undergraduate": 0.0,
+        "completion_rate_master": 0.0,
+        "completion_rate_phd": 0.0
+    },
+    "UBC-Annual-Enrolment-Report-2020-21.pdf": {
+        "university": "University Of British Columbia",
+        "academic_year": 2021,
+        "total_enrollment_headcount": 70024,
+        "domestic_students_headcount": 0,
+        "international_students_headcount": 0,
+        "indigenous_students_headcount": 2009,
+        "completion_rate_undergraduate": 0.0,
+        "completion_rate_master": 0.0,
+        "completion_rate_phd": 0.0
+    },
+    "UBC-Annual-Enrolment-Report-2022-23.pdf": {
+        "university": "University Of British Columbia",
+        "academic_year": 2023,
+        "total_enrollment_headcount": 72585,
+        "domestic_students_headcount": 0,
+        "international_students_headcount": 0,
+        "indigenous_students_headcount": 2260,
+        "completion_rate_undergraduate": 0.0,
+        "completion_rate_master": 0.0,
+        "completion_rate_phd": 0.0
+    },
+    "UBC-Annual-Enrolment-Report-2023-24.pdf": {
+        "university": "The University Of British Columbia",
+        "academic_year": 2023,
+        "total_enrollment_headcount": 71201,
+        "domestic_students_headcount": 0,
+        "international_students_headcount": 0,
+        "indigenous_students_headcount": 2331,
+        "completion_rate_undergraduate": 0.0,
+        "completion_rate_master": 0.0,
+        "completion_rate_phd": 0.0
+    }
+}
