@@ -1,6 +1,7 @@
 "use client"
 
 import { MultiSelect } from "@/components/ui/multi-select"
+import { useState } from "react"
 
 interface FilterBarProps {
   selectedUniversities: string[]
@@ -21,6 +22,19 @@ export default function FilterBar({
   years,
   activeTab,
 }: FilterBarProps) {
+  // Add state for university type filters
+  const [selectedTypes, setSelectedTypes] = useState<string[]>(["all"]);
+
+  // Define university types
+  const universityTypes = [
+    { value: "all", label: "All Types" },
+    { value: "public", label: "Public Universities" },
+    { value: "community", label: "Community Colleges" },
+    { value: "polytechnic", label: "Polytechnic Colleges" },
+    { value: "fourYear", label: "4-Year Schools" },
+    { value: "research", label: "Research Universities" }
+  ];
+
   let title = "Overview"
   
   switch(activeTab) {
@@ -76,6 +90,25 @@ export default function FilterBar({
     }
   };
 
+  // Handle university type selection
+  const handleTypeChange = (values: string[]) => {
+    // If "all" is selected along with other options, just keep "all"
+    if (values.includes("all") && values.length > 1) {
+      if (selectedTypes.includes("all")) {
+        // If "all" was already selected, user wants to select specific types
+        setSelectedTypes(values.filter(v => v !== "all"));
+      } else {
+        // User just selected "all", so set to only "all"
+        setSelectedTypes(["all"]);
+      }
+    } else if (values.length === 0) {
+      // If nothing is selected, default to "all"
+      setSelectedTypes(["all"]);
+    } else {
+      setSelectedTypes(values);
+    }
+  };
+
   // Format display text for selections
   const getUniversityDisplayText = () => {
     if (selectedUniversities.includes("all")) return "All Universities";
@@ -89,25 +122,44 @@ export default function FilterBar({
     return `${selectedYears.length} Years Selected`;
   };
 
-  return (
-    <div className="flex items-center justify-between mb-4">
-      <h1 className="text-xl font-semibold">{title}</h1>
-      <div className="flex items-center gap-4">
-        <MultiSelect
-          options={[{ value: "all", label: "All Universities" }, ...universities.map(uni => ({ value: uni, label: uni }))]}
-          selectedValues={selectedUniversities}
-          onChange={handleUniversityChange}
-          placeholder="Select Universities"
-          displayText={getUniversityDisplayText()}
-        />
+  const getTypeDisplayText = () => {
+    if (selectedTypes.includes("all")) return "All Types";
+    if (selectedTypes.length === 1) {
+      const typeObj = universityTypes.find(t => t.value === selectedTypes[0]);
+      return typeObj ? typeObj.label : selectedTypes[0];
+    }
+    return `${selectedTypes.length} Types Selected`;
+  };
 
-        <MultiSelect
-          options={[{ value: "all", label: "All Years" }, ...years.map(year => ({ value: year.toString(), label: year.toString() }))]}
-          selectedValues={selectedYears}
-          onChange={handleYearChange}
-          placeholder="Select Years"
-          displayText={getYearDisplayText()}
-        />
+  return (
+    <div className="mb-4">
+      <div className="flex items-center justify-between mb-2">
+        <h1 className="text-xl font-semibold">{title}</h1>
+        <div className="flex items-center gap-4">
+          <MultiSelect
+            options={[{ value: "all", label: "All Universities" }, ...universities.map(uni => ({ value: uni, label: uni }))]}
+            selectedValues={selectedUniversities}
+            onChange={handleUniversityChange}
+            placeholder="Select Universities"
+            displayText={getUniversityDisplayText()}
+          />
+
+          <MultiSelect
+            options={[{ value: "all", label: "All Years" }, ...years.map(year => ({ value: year.toString(), label: year.toString() }))]}
+            selectedValues={selectedYears}
+            onChange={handleYearChange}
+            placeholder="Select Years"
+            displayText={getYearDisplayText()}
+          />
+
+          <MultiSelect
+            options={universityTypes}
+            selectedValues={selectedTypes}
+            onChange={handleTypeChange}
+            placeholder="Select Types"
+            displayText={getTypeDisplayText()}
+          />
+        </div>
       </div>
     </div>
   )

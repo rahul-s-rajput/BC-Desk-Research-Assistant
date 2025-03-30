@@ -30,6 +30,20 @@ import {
 // Colors for charts
 const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884d8", "#82ca9d"]
 
+// University short names mapping
+const UNIVERSITY_SHORT_NAMES: Record<string, string> = {
+  "university of british columbia": "UBC",
+  "the university of british columbia": "UBC",
+  "university of victoria": "UVic",
+  "simon fraser university": "SFU"
+};
+
+// Helper function to get university short name
+const getUniversityShortName = (university: string): string => {
+  const normalizedName = university.toLowerCase().trim().replace(/^the\s+/, '');
+  return UNIVERSITY_SHORT_NAMES[normalizedName] || university;
+};
+
 export default function Dashboard() {
   const {
     selectedUniversities,
@@ -40,9 +54,35 @@ export default function Dashboard() {
     years,
     kpis,
     formatCurrency,
+    formatNumber,
     processedFinancialData,
-    filteredFinancialData
+    filteredFinancialData,
+    processedEnrollmentData,
+    filteredEnrollmentData
   } = useDashboard()
+
+  // Custom tooltip styles
+  const CustomTooltipStyle = {
+    backgroundColor: "white",
+    padding: "10px",
+    border: "1px solid #ccc",
+    borderRadius: "5px",
+    boxShadow: "2px 2px 5px rgba(0, 0, 0, 0.1)"
+  };
+
+  // Custom tooltip for enrollment pie chart
+  const EnrollmentPieTooltip = ({ active, payload }: any) => {
+    if (active && payload && payload.length) {
+      const data = payload[0];
+      return (
+        <div style={CustomTooltipStyle}>
+          <p className="font-semibold">{data.name}</p>
+          <p className="text-sm">{formatNumber(data.value)} students</p>
+        </div>
+      );
+    }
+    return null;
+  };
 
   // Financial data for trends chart
   const financialData = useMemo(() => {
@@ -83,11 +123,16 @@ export default function Dashboard() {
         };
       }
       
-      // Sum values
-      acc[item.fiscal_year].revenue += item.government_grants + item.tuition_fees + 
-                                      ((item.research_funding as number) || 0) + ((item.donations as number) || 0) + ((item.other_income as number) || 0);
-      acc[item.fiscal_year].expenses += (item.total_operational_costs as number) + 
-                                       ((item.program_expenses as number) || 0) + ((item.administrative_expenses as number) || 0);
+      // Sum values using the new schema
+      acc[item.fiscal_year].revenue += item.total_revenue || (
+        item.government_grants + 
+        item.tuition_fees + 
+        item.sales_and_services +
+        item.non_government_grants_and_donations + 
+        item.investment_income
+      );
+      
+      acc[item.fiscal_year].expenses += item.total_expenses || item.total_operational_costs;
       acc[item.fiscal_year].count++;
       
       return acc;
@@ -103,22 +148,84 @@ export default function Dashboard() {
       }));
   }, [processedFinancialData, selectedUniversities, selectedYears, years]);
   
-  // Enrollment data
-  const enrollmentData = [
-    { name: "Domestic Undergraduate", value: 12500 },
-    { name: "International Undergraduate", value: 5000 },
-    { name: "Domestic Graduate", value: 3500 },
-    { name: "International Graduate", value: 1500 },
-  ]
+  // Enrollment data from actual dataset
+  const enrollmentData = useMemo(() => {
+    // Get universities data for the pie chart
+    const relevantYears = selectedYears.includes("all") ? 
+      [...new Set(filteredEnrollmentData.map(item => item.academic_year))].sort((a, b) => b - a) :
+      selectedYears.map(y => parseInt(y)).sort((a, b) => b - a);
+      
+    if (relevantYears.length === 0) return [];
+    
+    const latestYear = relevantYears[0];
+    
+    // Group by university for the latest year
+    const universityData = filteredEnrollmentData
+      .filter(item => item.academic_year === latestYear)
+      .reduce((acc, item) => {
+        const uniName = item.university;
+        if (!acc[uniName]) {
+          acc[uniName] = {
+            name: uniName,
+            value: 0
+          };
+        }
+        
+        // Sum total enrollment for each university
+        acc[uniName].value += item.total_enrollment_headcount || 0;
+        
+        return acc;
+      }, {} as Record<string, {name: string, value: number}>);
+    
+    // Convert to array and sort by value
+    return Object.values(universityData)
+      .sort((a, b) => b.value - a.value)
+      .map(item => ({
+        name: getUniversityShortName(item.name),
+        value: item.value
+      }));
+  }, [filteredEnrollmentData, selectedYears]);
   
-  // Operational costs data
-  const costData = [
-    { name: "Faculty Salaries", value: 145000000 },
-    { name: "Staff Salaries", value: 95000000 },
-    { name: "Facilities", value: 80000000 },
-    { name: "Administrative", value: 65000000 },
-    { name: "Research", value: 40000000 },
-  ]
+  // Operational costs data from actual dataset
+  const costData = useMemo(() => {
+    // Updated to match the financial_results.json schema
+    const costCategories = [
+      { key: 'faculty_salaries', name: 'Faculty Salaries' },
+      { key: 'learning_expenses', name: 'Learning' },
+      { key: 'research_expenses', name: 'Research' },
+      { key: 'utilities_expenses', name: 'Utilities' },
+      { key: 'community_engagement_expenses', name: 'Community Engagement' }
+    ];
+    
+    // Get the most recent year's data across selected universities
+    const relevantYears = selectedYears.includes("all") ? 
+      [...new Set(filteredFinancialData.map(item => item.fiscal_year))].sort((a, b) => b - a) :
+      selectedYears.map(y => parseInt(y)).sort((a, b) => b - a);
+      
+    if (relevantYears.length === 0) return [];
+    
+    const latestYear = relevantYears[0];
+    
+    // Filter for the latest year
+    const latestYearData = filteredFinancialData.filter(item => item.fiscal_year === latestYear);
+    
+    // Create data for each cost category
+    const costsData = costCategories.map(category => {
+      // Sum across all selected universities
+      const totalValue = latestYearData.reduce((sum, item) => {
+        const value = item[category.key] as number;
+        return sum + (value || 0);
+      }, 0);
+      
+      return {
+        name: category.name,
+        value: totalValue
+      };
+    }).filter(item => item.value > 0); // Only include categories with values
+    
+    // Sort by value, descending
+    return costsData.sort((a, b) => b.value - a.value);
+  }, [filteredFinancialData, selectedYears]);
   
   // Program outcome data
   const outcomeData = [
@@ -167,12 +274,12 @@ export default function Dashboard() {
         </div>
 
         <div className="bg-card rounded-md border p-4">
-          <div className="text-lg font-medium mb-1">Enrollment (Domestic)</div>
+          <div className="text-lg font-medium mb-1">Domestic Tuition Revenue</div>
           <div className="flex items-baseline gap-1">
             <div className="text-3xl font-bold">
               {kpis ? formatCurrency(kpis.enrollment_domestic.value) : "Loading..."}
             </div>
-            <div className="text-sm text-muted-foreground">Tuition Revenue</div>
+            <div className="text-sm text-muted-foreground">Annual</div>
           </div>
           {kpis && (
             <div className="flex items-center gap-1 mt-1">
@@ -191,12 +298,12 @@ export default function Dashboard() {
         </div>
 
         <div className="bg-card rounded-md border p-4">
-          <div className="text-lg font-medium mb-1">Enrollment (Int'l)</div>
+          <div className="text-lg font-medium mb-1">International Tuition Revenue</div>
           <div className="flex items-baseline gap-1">
             <div className="text-3xl font-bold">
               {kpis ? formatCurrency(kpis.enrollment_intl.value) : "Loading..."}
             </div>
-            <div className="text-sm text-muted-foreground">Tuition Revenue</div>
+            <div className="text-sm text-muted-foreground">Annual</div>
           </div>
           {kpis && (
             <div className="flex items-center gap-1 mt-1">
@@ -220,7 +327,7 @@ export default function Dashboard() {
             <div className="text-3xl font-bold">
               {kpis ? formatCurrency(kpis.government_funding.value) : "Loading..."}
             </div>
-            <div className="text-sm text-muted-foreground">Grants</div>
+            <div className="text-sm text-muted-foreground">Annual Grants</div>
           </div>
           {kpis && (
             <div className="flex items-center gap-1 mt-1">
@@ -239,9 +346,9 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Visualizations from each dashboard */}
+      {/* Visualizations from each dashboard - Emphasis on enrollment and operational costs */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-        {/* Financial Chart */}
+        {/* Financial Chart - Top Left */}
         <Card>
           <CardHeader>
             <CardTitle>Financial Trends</CardTitle>
@@ -277,17 +384,53 @@ export default function Dashboard() {
             </div>
             <div className="mt-2 text-right">
               <Link href="/dashboard/financials" className="text-sm text-primary hover:underline">
-                View Full Dashboard →
+                View Full Financial Dashboard →
               </Link>
             </div>
           </CardContent>
         </Card>
 
-        {/* Enrollment Chart */}
+        {/* Operational Costs Chart - Top Right */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Operational Costs</CardTitle>
+            <CardDescription>Major expense categories</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[300px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={costData}
+                  layout="vertical"
+                  margin={{ top: 5, right: 30, left: 80, bottom: 5 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis type="number" tickFormatter={(value) => formatCurrency(value)} />
+                  <YAxis type="category" dataKey="name" width={80} />
+                  <Tooltip formatter={(value) => [formatCurrency(value as number), ""]} />
+                  <Legend />
+                  <Bar 
+                    dataKey="value" 
+                    name="Amount" 
+                    fill="#8884d8"
+                    radius={[0, 4, 4, 0]} 
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="mt-2 text-right">
+              <Link href="/dashboard/operational-costs" className="text-sm text-primary hover:underline">
+                View Full Operational Costs Dashboard →
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Enrollment Chart - Bottom Left */}
         <Card>
           <CardHeader>
             <CardTitle>Student Population</CardTitle>
-            <CardDescription>Distribution by category</CardDescription>
+            <CardDescription>Total enrollment by university</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="h-[300px]">
@@ -307,54 +450,23 @@ export default function Dashboard() {
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
-                  <Tooltip formatter={(value) => [`${value} students`, ""]} />
+                  <Tooltip content={<EnrollmentPieTooltip />} />
                 </PieChart>
               </ResponsiveContainer>
             </div>
             <div className="mt-2 text-right">
               <Link href="/dashboard/enrollment" className="text-sm text-primary hover:underline">
-                View Full Dashboard →
+                View Full Enrollment Dashboard →
               </Link>
             </div>
           </CardContent>
         </Card>
 
-        {/* Operational Costs Chart */}
+        {/* Program Outcomes Chart - Bottom Right */}
         <Card>
           <CardHeader>
-            <CardTitle>Operational Costs</CardTitle>
-            <CardDescription>Breakdown by category</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="h-[300px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart
-                  data={costData}
-                  layout="vertical"
-                  margin={{ top: 5, right: 30, left: 80, bottom: 5 }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis type="number" tickFormatter={(value) => formatCurrency(value)} />
-                  <YAxis type="category" dataKey="name" width={80} />
-                  <Tooltip formatter={(value) => [formatCurrency(value as number), ""]} />
-                  <Legend />
-                  <Bar dataKey="value" name="Amount" fill="#8884d8" />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-            <div className="mt-2 text-right">
-              <Link href="/dashboard/operational-costs" className="text-sm text-primary hover:underline">
-                View Full Dashboard →
-              </Link>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Program Outcomes Chart */}
-        <Card className="md:col-span-2">
-          <CardHeader>
-            <CardTitle>Program Outcomes Assessment</CardTitle>
-            <CardDescription>Completion, employment, and satisfaction rates by program</CardDescription>
+            <CardTitle>Program Outcomes</CardTitle>
+            <CardDescription>Completion, employment, and satisfaction rates</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="h-[300px]">
@@ -364,21 +476,21 @@ export default function Dashboard() {
                   <PolarAngleAxis dataKey="program" />
                   <PolarRadiusAxis angle={30} domain={[0, 100]} />
                   <Radar 
-                    name="Completion Rate" 
+                    name="Completion" 
                     dataKey="completion" 
                     stroke="#8884d8" 
                     fill="#8884d8" 
                     fillOpacity={0.6} 
                   />
                   <Radar 
-                    name="Employment Rate" 
+                    name="Employment" 
                     dataKey="employment" 
                     stroke="#82ca9d" 
                     fill="#82ca9d" 
                     fillOpacity={0.6} 
                   />
                   <Radar 
-                    name="Satisfaction Rate" 
+                    name="Satisfaction" 
                     dataKey="satisfaction" 
                     stroke="#ffc658" 
                     fill="#ffc658" 
@@ -391,7 +503,7 @@ export default function Dashboard() {
             </div>
             <div className="mt-2 text-right">
               <Link href="/dashboard/program-curriculum" className="text-sm text-primary hover:underline">
-                View Full Dashboard →
+                View Full Program Dashboard →
               </Link>
             </div>
           </CardContent>

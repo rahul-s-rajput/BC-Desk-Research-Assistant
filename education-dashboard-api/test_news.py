@@ -7,6 +7,12 @@ from typing import List, Optional
 import json
 import time
 from langchain_openai import ChatOpenAI
+import os
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
+
 class NewsItem(BaseModel):
     date: str
     source: str
@@ -50,9 +56,15 @@ def scrape_bc_education_news() -> List[dict]:
     return all_news
 
 def summarize_news(news_items: List[dict], max_retries: int = 3) -> List[NewsItem]:
+    # Get API key from environment
+    api_key = os.getenv("OPENROUTER_API_KEY")
+    if not api_key:
+        print("Error: OPENROUTER_API_KEY not found in environment variables")
+        return []
+        
     llm = ChatOpenAI(
         model="deepseek/deepseek-chat-v3-0324:free",
-        openai_api_key="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",
+        openai_api_key=api_key,
         openai_api_base="https://openrouter.ai/api/v1",
         temperature=0.1
     )

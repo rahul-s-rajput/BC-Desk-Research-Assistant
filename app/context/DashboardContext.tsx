@@ -10,17 +10,22 @@ interface FinancialData {
   tuition_fees: number
   faculty_salaries: number
   net_assets: number
+  total_expenses: number
+  total_revenue: number
   total_operational_costs: number
-  faculty_staff_costs: number
   sales_and_services: number
   non_government_grants_and_donations: number
   investment_income: number
   learning_expenses: number
   research_expenses: number
-  facilities_expenses: number
-  students_expenses: number
+  utilities_expenses: number
   community_engagement_expenses: number
-  administration_expenses: number
+  cash_and_cash_equivalents: number
+  accounts_receivable: number
+  portfolio_investments: number
+  tangible_capital_assets: number
+  accounts_payable_and_accrued_liabilities: number
+  debt: number
   [key: string]: string | number // For dynamic access
 }
 
@@ -86,17 +91,22 @@ export function DashboardProvider({ children }: DashboardProviderProps) {
       tuition_fees: 0,
       faculty_salaries: 0,
       net_assets: 0,
+      total_expenses: 0,
+      total_revenue: 0,
       total_operational_costs: 0,
-      faculty_staff_costs: 0,
       sales_and_services: 0,
       non_government_grants_and_donations: 0,
       investment_income: 0,
       learning_expenses: 0,
       research_expenses: 0,
-      facilities_expenses: 0,
-      students_expenses: 0,
+      utilities_expenses: 0,
       community_engagement_expenses: 0,
-      administration_expenses: 0,
+      cash_and_cash_equivalents: 0,
+      accounts_receivable: 0,
+      portfolio_investments: 0,
+      tangible_capital_assets: 0,
+      accounts_payable_and_accrued_liabilities: 0,
+      debt: 0,
     },
   }
 
@@ -179,17 +189,34 @@ export function DashboardProvider({ children }: DashboardProviderProps) {
         setFinancialData(financialDataResult)
         
         // Process the financial data for charts
-        const processedFinancial = Object.values(financialDataResult).map((item: any) => ({
-          ...item,
-          year: item.fiscal_year,
-          total_revenue: item.government_grants + 
-                        item.tuition_fees + 
-                        item.non_government_grants_and_donations + 
-                        item.sales_and_services + 
-                        item.investment_income,
-          total_expenses: item.total_operational_costs,
-          normalizedUniversity: normalizeUniversityName(item.university)
-        }))
+        const processedFinancial = Object.values(financialDataResult).map((item: any) => {
+          // Normalize university name
+          const normalizedUniversityName = normalizeUniversityName(item.university);
+          
+          // Ensure all fields have at least a 0 value if missing
+          return {
+            ...item,
+            university: normalizedUniversityName, // Use normalized name
+            year: item.fiscal_year,
+            // Ensure all required fields have values
+            faculty_salaries: item.faculty_salaries || 0,
+            learning_expenses: item.learning_expenses || 0,
+            research_expenses: item.research_expenses || 0,
+            utilities_expenses: item.utilities_expenses || 0,
+            community_engagement_expenses: item.community_engagement_expenses || 0,
+            // The total_revenue and total_expenses are now directly in the JSON
+            // but we can also calculate them if needed
+            total_revenue: item.total_revenue || (
+              item.government_grants + 
+              item.tuition_fees + 
+              item.sales_and_services +
+              item.non_government_grants_and_donations + 
+              item.investment_income
+            ),
+            total_expenses: item.total_expenses || item.total_operational_costs,
+            normalizedUniversity: normalizedUniversityName.toLowerCase().replace(/\s+/g, '')
+          };
+        });
         
         setProcessedFinancialData(processedFinancial)
 
@@ -203,11 +230,25 @@ export function DashboardProvider({ children }: DashboardProviderProps) {
         setEnrollmentData(enrollmentDataResult)
         
         // Process the enrollment data for charts
-        const processedEnrollment = Object.values(enrollmentDataResult).map((item: any) => ({
-          ...item,
-          year: item.academic_year,
-          normalizedUniversity: normalizeUniversityName(item.university)
-        }))
+        const processedEnrollment = Object.values(enrollmentDataResult).map((item: any) => {
+          // Normalize university name
+          const normalizedUniversityName = normalizeUniversityName(item.university);
+          
+          return {
+            ...item,
+            university: normalizedUniversityName, // Use normalized name
+            year: item.academic_year,
+            // Ensure all required fields have values
+            total_enrollment_headcount: item.total_enrollment_headcount || 0,
+            domestic_students_headcount: item.domestic_students_headcount || 0,
+            international_students_headcount: item.international_students_headcount || 0,
+            indigenous_students_headcount: item.indigenous_students_headcount || 0,
+            completion_rate_undergraduate: item.completion_rate_undergraduate || 0,
+            completion_rate_master: item.completion_rate_master || 0,
+            completion_rate_phd: item.completion_rate_phd || 0,
+            normalizedUniversity: normalizedUniversityName.toLowerCase().replace(/\s+/g, '')
+          };
+        });
         
         setProcessedEnrollmentData(processedEnrollment)
         

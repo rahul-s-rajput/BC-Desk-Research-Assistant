@@ -36,7 +36,7 @@ const UNIVERSITY_SHORT_NAMES: Record<string, string> = {
 
 // Helper function to get university short name
 const getUniversityShortName = (university: string): string => {
-  const normalizedName = university.toLowerCase().trim();
+  const normalizedName = university.toLowerCase().trim().replace(/^the\s+/, '');
   return UNIVERSITY_SHORT_NAMES[normalizedName] || university;
 };
 
@@ -72,10 +72,13 @@ export default function OperationalCostsDashboard() {
   // Custom tooltip for cost breakdown
   const CostBreakdownTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
+      // For university labels, use the original label (which is already shortName for university grouping)
+      const displayLabel = costsGroupBy === 'university' ? label : label;
+      
       return (
         <div style={CustomTooltipStyle}>
           <div className="border-b pb-2 mb-2">
-            <p className="font-semibold text-sm">{label}</p>
+            <p className="font-semibold text-sm">{displayLabel}</p>
           </div>
           
           {payload.map((entry: any, index: number) => (
@@ -124,23 +127,21 @@ export default function OperationalCostsDashboard() {
           name: key,
           shortName: groupBy === 'university' ? getUniversityShortName(item.university) : key,
           year: groupBy === 'year' ? item.fiscal_year : 0,
-          "Faculty & Staff Costs": 0,
+          "Faculty Salaries": 0,
           "Learning Expenses": 0,
           "Research Expenses": 0,
-          "Facilities Expenses": 0,
-          "Students Expenses": 0,
-          "Administration Expenses": 0,
+          "Utilities Expenses": 0,
+          "Community Engagement": 0,
           count: 0
         };
       }
       
-      // Accumulate cost components
-      result[key]["Faculty & Staff Costs"] += item.faculty_staff_costs || 0;
+      // Accumulate cost components using the updated schema
+      result[key]["Faculty Salaries"] += item.faculty_salaries || 0;
       result[key]["Learning Expenses"] += item.learning_expenses || 0;
       result[key]["Research Expenses"] += item.research_expenses || 0;
-      result[key]["Facilities Expenses"] += item.facilities_expenses || 0;
-      result[key]["Students Expenses"] += item.students_expenses || 0;
-      result[key]["Administration Expenses"] += item.administration_expenses || 0;
+      result[key]["Utilities Expenses"] += item.utilities_expenses || 0;
+      result[key]["Community Engagement"] += item.community_engagement_expenses || 0;
       result[key].count++;
     });
     
@@ -180,23 +181,24 @@ export default function OperationalCostsDashboard() {
       if (!groupedData[uniName][year]) {
         groupedData[uniName][year] = {
           university: uniName,
+          shortName: getUniversityShortName(uniName),
           year: year,
           total_operational_costs: 0,
-          faculty_staff_costs: 0,
+          faculty_salaries: 0,
           learning_expenses: 0,
           research_expenses: 0,
-          facilities_expenses: 0,
-          students_expenses: 0
+          utilities_expenses: 0,
+          community_engagement_expenses: 0
         };
       }
       
-      // Accumulate values
+      // Accumulate values using the updated schema
       groupedData[uniName][year].total_operational_costs += item.total_operational_costs || 0;
-      groupedData[uniName][year].faculty_staff_costs += item.faculty_staff_costs || 0;
+      groupedData[uniName][year].faculty_salaries += item.faculty_salaries || 0;
       groupedData[uniName][year].learning_expenses += item.learning_expenses || 0;
       groupedData[uniName][year].research_expenses += item.research_expenses || 0;
-      groupedData[uniName][year].facilities_expenses += item.facilities_expenses || 0;
-      groupedData[uniName][year].students_expenses += item.students_expenses || 0;
+      groupedData[uniName][year].utilities_expenses += item.utilities_expenses || 0;
+      groupedData[uniName][year].community_engagement_expenses += item.community_engagement_expenses || 0;
     });
     
     // Flatten the data
@@ -244,9 +246,9 @@ export default function OperationalCostsDashboard() {
           shortName: getUniversityShortName(uniName),
           "Learning": 0,
           "Research": 0,
-          "Facilities": 0,
-          "Student Services": 0,
-          "Administration": 0,
+          "Utilities": 0,
+          "Community Engagement": 0,
+          "Faculty Salaries": 0,
           total_costs: 0,
           student_count: 0,
         };
@@ -255,9 +257,9 @@ export default function OperationalCostsDashboard() {
       // Add values (we'll calculate per-student later)
       result[uniName]["Learning"] += item.learning_expenses || 0;
       result[uniName]["Research"] += item.research_expenses || 0;
-      result[uniName]["Facilities"] += item.facilities_expenses || 0;
-      result[uniName]["Student Services"] += item.students_expenses || 0;
-      result[uniName]["Administration"] += item.administration_expenses || 0;
+      result[uniName]["Utilities"] += item.utilities_expenses || 0;
+      result[uniName]["Community Engagement"] += item.community_engagement_expenses || 0;
+      result[uniName]["Faculty Salaries"] += item.faculty_salaries || 0;
       result[uniName].total_costs += item.total_operational_costs || 0;
       
       // Estimate student count based on tuition fees
@@ -272,9 +274,9 @@ export default function OperationalCostsDashboard() {
       if (result[uni].student_count > 0) {
         result[uni]["Learning"] = result[uni]["Learning"] / result[uni].student_count;
         result[uni]["Research"] = result[uni]["Research"] / result[uni].student_count;
-        result[uni]["Facilities"] = result[uni]["Facilities"] / result[uni].student_count;
-        result[uni]["Student Services"] = result[uni]["Student Services"] / result[uni].student_count;
-        result[uni]["Administration"] = result[uni]["Administration"] / result[uni].student_count;
+        result[uni]["Utilities"] = result[uni]["Utilities"] / result[uni].student_count;
+        result[uni]["Community Engagement"] = result[uni]["Community Engagement"] / result[uni].student_count;
+        result[uni]["Faculty Salaries"] = result[uni]["Faculty Salaries"] / result[uni].student_count;
         result[uni]["Total Cost per Student"] = result[uni].total_costs / result[uni].student_count;
       }
     });
@@ -297,7 +299,7 @@ export default function OperationalCostsDashboard() {
     if (filteredFinancialData.length === 0) {
       return {
         totalCosts: { value: 0, change: 0, label: "Total Operational Costs" },
-        staffCosts: { value: 0, change: 0, label: "Faculty & Staff Costs" },
+        staffCosts: { value: 0, change: 0, label: "Faculty Salaries" },
         perStudent: { value: 0, change: 0, label: "Cost per Student" },
         efficiencyRatio: { value: 0, change: 0, label: "Cost Efficiency Ratio" }
       };
@@ -323,7 +325,7 @@ export default function OperationalCostsDashboard() {
     if (!currentYear || !previousYear) {
       return {
         totalCosts: { value: 0, change: 0, label: "Total Operational Costs" },
-        staffCosts: { value: 0, change: 0, label: "Faculty & Staff Costs" },
+        staffCosts: { value: 0, change: 0, label: "Faculty Salaries" },
         perStudent: { value: 0, change: 0, label: "Cost per Student" },
         efficiencyRatio: { value: 0, change: 0, label: "Cost Efficiency Ratio" }
       };
@@ -332,7 +334,7 @@ export default function OperationalCostsDashboard() {
     // Calculate current year metrics
     const currentYearData = dataByYear[currentYear];
     const currentTotalCosts = currentYearData.reduce((sum, item) => sum + (item.total_operational_costs || 0), 0);
-    const currentStaffCosts = currentYearData.reduce((sum, item) => sum + (item.faculty_staff_costs || 0), 0);
+    const currentStaffCosts = currentYearData.reduce((sum, item) => sum + (item.faculty_salaries || 0), 0);
     const currentTuitionFees = currentYearData.reduce((sum, item) => sum + (item.tuition_fees || 0), 0);
     const currentRevenue = currentYearData.reduce((sum, item) => 
       sum + (item.government_grants || 0) + (item.tuition_fees || 0) + 
@@ -348,7 +350,7 @@ export default function OperationalCostsDashboard() {
     // Calculate previous year metrics
     const previousYearData = dataByYear[previousYear];
     const previousTotalCosts = previousYearData.reduce((sum, item) => sum + (item.total_operational_costs || 0), 0);
-    const previousStaffCosts = previousYearData.reduce((sum, item) => sum + (item.faculty_staff_costs || 0), 0);
+    const previousStaffCosts = previousYearData.reduce((sum, item) => sum + (item.faculty_salaries || 0), 0);
     const previousTuitionFees = previousYearData.reduce((sum, item) => sum + (item.tuition_fees || 0), 0);
     const previousRevenue = previousYearData.reduce((sum, item) => 
       sum + (item.government_grants || 0) + (item.tuition_fees || 0) + 
@@ -374,7 +376,7 @@ export default function OperationalCostsDashboard() {
       staffCosts: {
         value: currentStaffCosts,
         change: staffCostsChange,
-        label: "Faculty & Staff Costs"
+        label: "Faculty Salaries"
       },
       perStudent: {
         value: currentPerStudent,
@@ -388,6 +390,100 @@ export default function OperationalCostsDashboard() {
       }
     };
   }, [filteredFinancialData, financialYears]);
+
+  // Create a custom tooltip for the cost trends chart
+  const CostTrendsTooltip = ({ active, payload, label }: any) => {
+    if (active && payload && payload.length) {
+      return (
+        <div style={CustomTooltipStyle}>
+          <div className="border-b pb-2 mb-2">
+            <p className="font-semibold text-sm">Year: {label}</p>
+          </div>
+          
+          {payload.map((entry: any, index: number) => {
+            // Get the short name from the payload data
+            const uniShortName = entry.payload.shortName;
+            
+            return (
+              <div key={`item-${index}`} className="flex justify-between items-center mb-1">
+                <div className="flex items-center">
+                  <div
+                    className="w-3 h-3 mr-2"
+                    style={{ backgroundColor: entry.color }}
+                  ></div>
+                  <span className="text-xs">{uniShortName}</span>
+                </div>
+                <span className="text-xs font-semibold">{formatCurrency(entry.value)}</span>
+              </div>
+            );
+          })}
+        </div>
+      );
+    }
+    return null;
+  };
+
+  // Custom tooltip for per-student costs
+  const PerStudentTooltip = ({ active, payload, label }: any) => {
+    if (active && payload && payload.length) {
+      return (
+        <div style={CustomTooltipStyle}>
+          <div className="border-b pb-2 mb-2">
+            <p className="font-semibold text-sm">{label}</p>
+          </div>
+          
+          {payload.map((entry: any, index: number) => (
+            <div key={`item-${index}`} className="flex justify-between items-center mb-1">
+              <div className="flex items-center">
+                <div
+                  className="w-3 h-3 mr-2"
+                  style={{ backgroundColor: entry.color }}
+                ></div>
+                <span className="text-xs">{entry.name}</span>
+              </div>
+              <span className="text-xs font-semibold">{formatCurrency(entry.value)}</span>
+            </div>
+          ))}
+          
+          {/* Calculate and show total */}
+          <div className="border-t mt-2 pt-1 flex justify-between">
+            <span className="text-xs font-medium">Total per Student</span>
+            <span className="text-xs font-bold">
+              {formatCurrency(payload.reduce((sum: number, entry: any) => sum + entry.value, 0))}
+            </span>
+          </div>
+        </div>
+      );
+    }
+    return null;
+  };
+  
+  // Custom tooltip for total cost comparison
+  const TotalCostTooltip = ({ active, payload, label }: any) => {
+    if (active && payload && payload.length) {
+      return (
+        <div style={CustomTooltipStyle}>
+          <div className="border-b pb-2 mb-2">
+            <p className="font-semibold text-sm">{label}</p>
+          </div>
+          
+          {payload.map((entry: any, index: number) => (
+            <div key={`item-${index}`} className="flex justify-between items-center mb-1">
+              <div className="flex items-center">
+                <div
+                  className="w-3 h-3 mr-2"
+                  style={{ backgroundColor: entry.color }}
+                ></div>
+                <span className="text-xs">{entry.name}</span>
+              </div>
+              <span className="text-xs font-semibold">{formatCurrency(entry.value)}</span>
+            </div>
+          ))}
+        </div>
+      );
+    }
+    return null;
+  };
 
   return (
     <DashboardLayout
@@ -435,7 +531,7 @@ export default function OperationalCostsDashboard() {
         </div>
 
         <div className="bg-card rounded-md border p-4">
-          <div className="text-lg font-medium mb-1">Faculty & Staff Costs</div>
+          <div className="text-lg font-medium mb-1">Faculty Salaries</div>
           <div className="flex items-baseline gap-1">
             <div className="text-3xl font-bold">{formatCurrency(operationalKPIs.staffCosts.value)}</div>
             <div className="text-sm text-muted-foreground">annual</div>
@@ -504,12 +600,11 @@ export default function OperationalCostsDashboard() {
                 <YAxis tickFormatter={(value) => formatCurrency(value)} />
                 <Tooltip content={<CostBreakdownTooltip />} />
                 <Legend />
-                <Bar dataKey="Faculty & Staff Costs" stackId="a" fill="#0088FE" />
+                <Bar dataKey="Faculty Salaries" stackId="a" fill="#0088FE" />
                 <Bar dataKey="Learning Expenses" stackId="a" fill="#00C49F" />
                 <Bar dataKey="Research Expenses" stackId="a" fill="#FFBB28" />
-                <Bar dataKey="Facilities Expenses" stackId="a" fill="#FF8042" />
-                <Bar dataKey="Students Expenses" stackId="a" fill="#8884d8" />
-                <Bar dataKey="Administration Expenses" stackId="a" fill="#82ca9d" />
+                <Bar dataKey="Utilities Expenses" stackId="a" fill="#FF8042" />
+                <Bar dataKey="Community Engagement" stackId="a" fill="#8884d8" />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -531,11 +626,11 @@ export default function OperationalCostsDashboard() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="total_operational_costs">Total Operational Costs</SelectItem>
-                <SelectItem value="faculty_staff_costs">Faculty & Staff Costs</SelectItem>
+                <SelectItem value="faculty_salaries">Faculty Salaries</SelectItem>
                 <SelectItem value="learning_expenses">Learning Expenses</SelectItem>
                 <SelectItem value="research_expenses">Research Expenses</SelectItem>
-                <SelectItem value="facilities_expenses">Facilities Expenses</SelectItem>
-                <SelectItem value="students_expenses">Students Expenses</SelectItem>
+                <SelectItem value="utilities_expenses">Utilities Expenses</SelectItem>
+                <SelectItem value="community_engagement_expenses">Community Engagement</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -544,6 +639,7 @@ export default function OperationalCostsDashboard() {
           <div className="h-[400px] w-full">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart
+                data={prepareCostTrendsData()}
                 margin={{ top: 10, right: 30, left: 20, bottom: 30 }}
               >
                 <CartesianGrid strokeDasharray="3 3" />
@@ -557,12 +653,20 @@ export default function OperationalCostsDashboard() {
                   tickFormatter={(value) => formatCurrency(value)}
                   label={{ value: formatMetricName(trendMetric), angle: -90, position: 'insideLeft' }}
                 />
-                <Tooltip formatter={(value) => [formatCurrency(value as number), ""]} />
-                <Legend />
+                <Tooltip content={<CostTrendsTooltip />} />
+                <Legend formatter={(value, entry) => {
+                  // Find the university short name from the first data point with the same stroke color
+                  const uniData = prepareCostTrendsData().find(item => 
+                    entry.color === COLORS[prepareCostTrendsData()
+                      .findIndex(d => d.university === item.university) % COLORS.length]
+                  );
+                  return uniData ? uniData.shortName : value;
+                }} />
                 {
                   // Create a line for each university
                   [...new Set(prepareCostTrendsData().map(item => item.university))].map((uni, index) => {
                     const uniData = prepareCostTrendsData().filter(item => item.university === uni);
+                    const shortName = uniData[0]?.shortName || getUniversityShortName(uni as string);
                     
                     return (
                       <Line 
@@ -570,7 +674,7 @@ export default function OperationalCostsDashboard() {
                         type="monotone" 
                         data={uniData}
                         dataKey={trendMetric} 
-                        name={uni as string} 
+                        name={shortName} 
                         stroke={COLORS[index % COLORS.length]} 
                         activeDot={{ r: 8 }} 
                         connectNulls
@@ -605,13 +709,13 @@ export default function OperationalCostsDashboard() {
                   height={70}
                 />
                 <YAxis tickFormatter={(value) => formatCurrency(value)} />
-                <Tooltip formatter={(value) => [formatCurrency(value as number), "Cost per Student"]} />
+                <Tooltip content={<PerStudentTooltip />} />
                 <Legend />
                 <Bar dataKey="Learning" stackId="a" fill="#0088FE" />
                 <Bar dataKey="Research" stackId="a" fill="#00C49F" />
-                <Bar dataKey="Facilities" stackId="a" fill="#FFBB28" />
-                <Bar dataKey="Student Services" stackId="a" fill="#FF8042" />
-                <Bar dataKey="Administration" stackId="a" fill="#8884d8" />
+                <Bar dataKey="Utilities" stackId="a" fill="#FFBB28" />
+                <Bar dataKey="Community Engagement" stackId="a" fill="#FF8042" />
+                <Bar dataKey="Faculty Salaries" stackId="a" fill="#8884d8" />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -639,18 +743,17 @@ export default function OperationalCostsDashboard() {
                   height={70}
                 />
                 <YAxis tickFormatter={(value) => formatCurrency(value)} />
-                <Tooltip formatter={(value) => [formatCurrency(value as number), ""]} />
+                <Tooltip content={<TotalCostTooltip />} />
                 <Legend />
                 <Bar 
                   dataKey={(entry) => {
                     // Calculate total for each university
                     return (
-                      entry["Faculty & Staff Costs"] +
+                      entry["Faculty Salaries"] +
                       entry["Learning Expenses"] +
                       entry["Research Expenses"] +
-                      entry["Facilities Expenses"] +
-                      entry["Students Expenses"] +
-                      entry["Administration Expenses"]
+                      entry["Utilities Expenses"] +
+                      entry["Community Engagement"]
                     );
                   }} 
                   name="Total Operational Costs" 

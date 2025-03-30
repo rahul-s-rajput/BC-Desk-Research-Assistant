@@ -21,6 +21,8 @@ logger = logging.getLogger(__name__)
 
 # Import RAG application
 from modules.rag_application import EnhancedRAGApplication
+# Import our database module
+from modules.db import Database
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
@@ -28,6 +30,9 @@ CORS(app)  # Enable CORS for all routes
 # Initialize RAG application
 rag_app = None
 app_initialized = False
+
+# Initialize database connection
+db = Database()
 
 # Load financial data from JSON file
 def load_financial_data():
@@ -193,20 +198,94 @@ def refresh_news_data():
         
         # Check for errors
         if result.returncode != 0:
-            error_msg = f"Script error (code {result.returncode}): {result.stderr}"
-            print(error_msg)
-            return jsonify({"error": error_msg}), 500
+            error_message = f"Error refreshing news: {result.stderr}"
+            print(error_message)
+            return jsonify({"error": error_message}), 500
         
-        print("Script completed successfully")
-        
-        # Load the newly generated news data
-        data = load_news_data()
-        return jsonify({"success": True, "message": "News data refreshed", "data": data})
+        return jsonify({"message": "News data refreshed successfully"})
     except Exception as e:
-        error_trace = traceback.format_exc()
-        print(f"Error in refresh_news_data: {str(e)}")
-        print(error_trace)
-        return jsonify({"error": f"Error: {str(e)}"}), 500
+        print(f"Exception occurred: {str(e)}")
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
+
+# API route to fetch new education reports and process them
+@app.route('/api/fetch-reports', methods=['POST'])
+def fetch_reports():
+    try:
+        # Get the current directory of app.py
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        
+        # Build path to the script
+        scrape_script_path = os.path.join(current_dir, 'test_scrape.py')
+        
+        # Use the current Python executable
+        python_executable = sys.executable
+        
+        print(f"Current directory: {current_dir}")
+        print(f"Scrape script path: {scrape_script_path}")
+        print(f"Python executable: {python_executable}")
+        
+        # Set environment variables for the subprocess
+        env = os.environ.copy()
+        env['RUNNING_FROM_API'] = 'true'
+        
+        # Check if the script exists
+        if not os.path.exists(scrape_script_path):
+            error_message = f"Script file not found: {scrape_script_path}"
+            print(error_message)
+            return jsonify({"error": error_message}), 500
+        
+        # Check if the Python executable exists
+        if not os.path.exists(python_executable):
+            error_message = f"Python executable not found: {python_executable}"
+            print(error_message)
+            return jsonify({"error": error_message}), 500
+        
+        # Run test_scrape.py using Method 2 (args list) which worked in our test
+        print("Running test_scrape.py using args list method (Method 2)...")
+        
+        result = subprocess.run(
+            [python_executable, scrape_script_path],
+            cwd=current_dir,
+            capture_output=True,
+            text=True,
+            env=env,
+            timeout=180  # 3-minute timeout
+        )
+        
+        # Print output for debugging
+        print(f"STDOUT: {result.stdout}")
+        if result.stderr:
+            print(f"STDERR: {result.stderr}")
+        
+        # Check for errors
+        if result.returncode != 0:
+            error_message = f"Error in fetch-reports process: {result.stderr}"
+            print(error_message)
+            return jsonify({"error": error_message}), 500
+        
+        # Check if the script output indicates success
+        if "Entire process completed successfully" in result.stdout:
+            return jsonify({
+                "message": "Reports fetched and processed successfully",
+                "details": result.stdout
+            })
+        else:
+            # If there's some output but return code is 0, it might be a partial success
+            return jsonify({
+                "message": "Reports processing completed with potential issues",
+                "details": result.stdout
+            })
+            
+    except subprocess.TimeoutExpired as e:
+        error_message = f"Process timed out after 180 seconds: {str(e)}"
+        print(error_message)
+        return jsonify({"error": error_message}), 500
+    
+    except Exception as e:
+        print(f"Exception occurred: {str(e)}")
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
 
 @app.route('/api/news/sources', methods=['GET'])
 def get_news_sources():
@@ -261,42 +340,167 @@ def update_news_sources():
         print(f"Error updating sources: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
-# Chat API endpoints
+# API endpoint to get all conversations
+@app.route('/api/conversations', methods=['GET'])
+def get_conversations():
+    try:
+        conversations = db.get_conversations()
+        return jsonify({"conversations": conversations})
+    except Exception as e:
+        logger.error(f"Error getting conversations: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+# API endpoint to get a specific conversation
+@app.route('/api/conversations/<conversation_id>', methods=['GET'])
+def get_conversation(conversation_id):
+    try:
+        conversation = db.get_conversation(conversation_id)
+        if conversation:
+            return jsonify(conversation)
+        else:
+            return jsonify({"error": "Conversation not found"}), 404
+    except Exception as e:
+        logger.error(f"Error getting conversation {conversation_id}: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+# API endpoint to create a new conversation
+@app.route('/api/conversations', methods=['POST'])
+def create_conversation():
+    try:
+        data = request.json
+        if not data or 'id' not in data or 'title' not in data:
+            return jsonify({"error": "Missing required fields"}), 400
+        
+        conversation = db.create_conversation(data['id'], data['title'])
+        return jsonify(conversation), 201
+    except Exception as e:
+        logger.error(f"Error creating conversation: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+# API endpoint to update a conversation title
+@app.route('/api/conversations/<conversation_id>/title', methods=['PUT'])
+def update_conversation_title(conversation_id):
+    try:
+        data = request.json
+        if not data or 'title' not in data:
+            return jsonify({"error": "Missing title field"}), 400
+        
+        success = db.update_conversation_title(conversation_id, data['title'])
+        if success:
+            return jsonify({"success": True})
+        else:
+            return jsonify({"error": "Conversation not found"}), 404
+    except Exception as e:
+        logger.error(f"Error updating conversation title: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+# API endpoint to delete a conversation
+@app.route('/api/conversations/<conversation_id>', methods=['DELETE'])
+def delete_conversation(conversation_id):
+    try:
+        success = db.delete_conversation(conversation_id)
+        if success:
+            return jsonify({"success": True})
+        else:
+            return jsonify({"error": "Conversation not found"}), 404
+    except Exception as e:
+        logger.error(f"Error deleting conversation: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+# API endpoint to add a message to a conversation
+@app.route('/api/conversations/<conversation_id>/messages', methods=['POST'])
+def add_message(conversation_id):
+    try:
+        data = request.json
+        if not data or 'role' not in data or 'content' not in data:
+            return jsonify({"error": "Missing required fields"}), 400
+        
+        retrieved_docs = data.get('retrieved_docs')
+        success = db.add_message(conversation_id, data['role'], data['content'], retrieved_docs)
+        
+        if success:
+            return jsonify({"success": True})
+        else:
+            return jsonify({"error": "Conversation not found"}), 404
+    except Exception as e:
+        logger.error(f"Error adding message: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+# Update the chat API endpoint to store messages in the database
 @app.route('/api/chat', methods=['POST'])
 async def chat():
-    """Send a message to the RAG chat system."""
-    global rag_app
+    global rag_app, app_initialized
+    
+    if not app_initialized:
+        return jsonify({"error": "RAG application is still initializing. Please try again in a moment."}), 503
     
     try:
-        # Initialize RAG app if not already done
-        if rag_app is None:
-            await initialize_rag_app()
-            
-        # Get request data
         data = request.json
-        if not data or 'message' not in data:
-            return jsonify({'error': 'No message provided'}), 400
-            
-        message = data['message']
+        if not data or 'query' not in data:
+            return jsonify({"error": "Missing query field"}), 400
+        
         conversation_id = data.get('conversation_id')
-        use_history = data.get('use_history', True)
+        if not conversation_id:
+            return jsonify({"error": "Missing conversation_id field"}), 400
         
-        # Process the message
-        result = await rag_app.process_message(
-            message=message,
-            conversation_id=conversation_id,
-            use_history=use_history
-        )
+        # Get the user's query
+        query = data['query']
         
-        return jsonify(result)
-    except Exception as e:
-        logger.error(f"Error in chat endpoint: {e}")
+        # Check if conversation exists, create if not
+        conversation = db.get_conversation(conversation_id)
+        if not conversation:
+            # Create a new conversation with a title based on the first message
+            title = query[:50] + ('...' if len(query) > 50 else '')
+            db.create_conversation(conversation_id, title)
+        
+        # Store the user message in the database
+        db.add_message(conversation_id, 'user', query)
+        
+        # Process the query with RAG
+        result = await rag_app.process_query(query)
+        
+        # Extract the response from the result
+        response = result.response
+        retrieved_docs = []
+        
+        # Format retrieved documents for storage
+        if result.retrieved_documents:
+            for doc in result.retrieved_documents:
+                retrieved_docs.append({
+                    "id": doc.id,
+                    "content": doc.content[:500],  # Just store a preview of the content
+                    "source": doc.source,
+                    "score": doc.score
+                })
+        
+        # Store the assistant's response in the database
+        db.add_message(conversation_id, 'assistant', response, retrieved_docs)
+        
+        # Update the conversation title if it's new or has a generic title
+        if conversation is None or (
+            conversation and len(conversation['messages']) <= 2 and 
+            (conversation['title'].startswith('New conversation') or conversation['title'].startswith('Conversation '))
+        ):
+            # Generate a title based on the first user message
+            new_title = query[:50] + ('...' if len(query) > 50 else '')
+            db.update_conversation_title(conversation_id, new_title)
+        
         return jsonify({
-            "response": f"Error processing your message: {str(e)}",
-            "sources": [],
-            "conversation_id": "error",
-            "success": False
-        }), 500
+            "response": response,
+            "retrieved_documents": [
+                {
+                    "id": doc.id,
+                    "content": doc.content,
+                    "source": doc.source,
+                    "score": doc.score
+                } for doc in result.retrieved_documents
+            ] if result.retrieved_documents else [],
+            "web_sources": getattr(result, 'web_sources', [])
+        })
+    except Exception as e:
+        logger.error(f"Error in chat endpoint: {str(e)}")
+        logger.error(traceback.format_exc())
+        return jsonify({"error": str(e)}), 500
 
 @app.route('/api/chat/index-reports', methods=['POST'])
 async def index_reports():
@@ -364,6 +568,193 @@ def before_request_func():
     # Only initialize for routes that need the RAG application
     if request.path.startswith('/api/chat'):
         asyncio.run(initialize_rag_app())
+
+# API route to test subprocess execution
+@app.route('/api/test-subprocess', methods=['POST'])
+def test_subprocess():
+    try:
+        # Get the current directory of app.py
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        
+        # Build path to the test script
+        test_script_path = os.path.join(current_dir, 'test_simple.py')
+        
+        # Use the current Python executable
+        python_executable = sys.executable
+        
+        print(f"Current directory: {current_dir}")
+        print(f"Test script path: {test_script_path}")
+        print(f"Python executable: {python_executable}")
+        
+        # Set environment variables for the subprocess
+        env = os.environ.copy()
+        env['RUNNING_FROM_API'] = 'true'
+        
+        # Check if the script exists
+        if not os.path.exists(test_script_path):
+            # Try to create it if it doesn't exist
+            try:
+                with open(test_script_path, 'w') as f:
+                    f.write("""import sys
+import os
+import time
+
+def main():
+    print("=== Simple Test Script Started ===")
+    print(f"Python version: {sys.version}")
+    print(f"Current directory: {os.getcwd()}")
+    print(f"Script path: {__file__}")
+    
+    if os.environ.get("RUNNING_FROM_API") == "true":
+        print("Running from API: Yes")
+    else:
+        print("Running from API: No")
+    
+    print("Working for 2 seconds...")
+    time.sleep(2)
+    
+    print("=== Simple Test Script Completed Successfully ===")
+    return True
+
+if __name__ == "__main__":
+    try:
+        success = main()
+        sys.exit(0 if success else 1)
+    except Exception as e:
+        print(f"Error in test script: {str(e)}")
+        sys.exit(1)
+""")
+                print(f"Created test script: {test_script_path}")
+            except Exception as e:
+                error_message = f"Failed to create test script: {str(e)}"
+                print(error_message)
+                return jsonify({"error": error_message}), 500
+        
+        # Try different methods to run the script
+        results = []
+        
+        # Method 1: Using subprocess.run with shell=True (Windows friendly)
+        print("\nTrying subprocess with shell=True:")
+        try:
+            cmd = f"{python_executable} {test_script_path}"
+            result1 = subprocess.run(
+                cmd,
+                cwd=current_dir,
+                capture_output=True,
+                text=True,
+                shell=True,
+                timeout=10
+            )
+            results.append({
+                "method": "shell=True",
+                "returncode": result1.returncode,
+                "stdout": result1.stdout,
+                "stderr": result1.stderr,
+                "success": result1.returncode == 0
+            })
+            print(f"Method 1 result: {result1.returncode}")
+        except Exception as e:
+            results.append({
+                "method": "shell=True",
+                "error": str(e),
+                "success": False
+            })
+            print(f"Method 1 error: {str(e)}")
+        
+        # Method 2: Using subprocess.run with arguments list
+        print("\nTrying subprocess with args list:")
+        try:
+            result2 = subprocess.run(
+                [python_executable, test_script_path],
+                cwd=current_dir,
+                capture_output=True,
+                text=True,
+                timeout=10
+            )
+            results.append({
+                "method": "args list",
+                "returncode": result2.returncode,
+                "stdout": result2.stdout,
+                "stderr": result2.stderr,
+                "success": result2.returncode == 0
+            })
+            print(f"Method 2 result: {result2.returncode}")
+        except Exception as e:
+            results.append({
+                "method": "args list",
+                "error": str(e),
+                "success": False
+            })
+            print(f"Method 2 error: {str(e)}")
+        
+        # Method 3: Using os.system
+        print("\nTrying os.system:")
+        try:
+            cmd = f"{python_executable} {test_script_path}"
+            exit_code = os.system(cmd)
+            results.append({
+                "method": "os.system",
+                "returncode": exit_code,
+                "success": exit_code == 0
+            })
+            print(f"Method 3 result: {exit_code}")
+        except Exception as e:
+            results.append({
+                "method": "os.system",
+                "error": str(e),
+                "success": False
+            })
+            print(f"Method 3 error: {str(e)}")
+        
+        return jsonify({
+            "message": "Subprocess testing completed",
+            "results": results
+        })
+        
+    except Exception as e:
+        print(f"Exception occurred: {str(e)}")
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
+
+# If the python executable is in AppData, try an alternate approach
+@app.route('/api/fetch-reports-alternate', methods=['POST'])
+def fetch_reports_alternate():
+    try:
+        # Get the current directory of app.py
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        
+        # Build path to the script
+        scrape_script_path = os.path.join(current_dir, 'test_scrape.py')
+        
+        # Try using python command directly (assumes python is in PATH)
+        print(f"Current directory: {current_dir}")
+        print(f"Scrape script path: {scrape_script_path}")
+        
+        # Check if the script exists
+        if not os.path.exists(scrape_script_path):
+            error_message = f"Script file not found: {scrape_script_path}"
+            print(error_message)
+            return jsonify({"error": error_message}), 500
+        
+        # Use os.system which has different process creation semantics
+        print("Running test_scrape.py using os.system...")
+        cmd = f"python {scrape_script_path}"
+        exit_code = os.system(cmd)
+        
+        if exit_code != 0:
+            error_message = f"Command failed with exit code: {exit_code}"
+            print(error_message)
+            return jsonify({"error": error_message}), 500
+        
+        return jsonify({
+            "message": "Reports fetching process initiated. Check server logs for details.",
+            "exit_code": exit_code
+        })
+        
+    except Exception as e:
+        print(f"Exception occurred: {str(e)}")
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)

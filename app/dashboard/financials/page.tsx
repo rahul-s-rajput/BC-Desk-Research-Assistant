@@ -36,17 +36,22 @@ interface FinancialDataItem {
   tuition_fees: number;
   faculty_salaries: number;
   net_assets: number;
+  total_expenses: number;
+  total_revenue: number;
   total_operational_costs: number;
-  faculty_staff_costs: number;
   sales_and_services: number;
   non_government_grants_and_donations: number;
   investment_income: number;
   learning_expenses: number;
   research_expenses: number;
-  facilities_expenses: number;
-  students_expenses: number;
+  utilities_expenses: number;
   community_engagement_expenses: number;
-  administration_expenses: number;
+  cash_and_cash_equivalents: number;
+  accounts_receivable: number;
+  portfolio_investments: number;
+  tangible_capital_assets: number;
+  accounts_payable_and_accrued_liabilities: number;
+  debt: number;
   [key: string]: string | number; // This allows for dynamic property access
 }
 
@@ -69,8 +74,8 @@ interface ExpenseGroupedData {
   "Total Operational Costs": number;
   "Learning Expenses": number;
   "Research Expenses": number;
-  "Facilities Expenses": number;
-  "Students Expenses": number;
+  "Utilities Expenses": number;
+  "Community Engagement": number;
   count: number;
 }
 
@@ -91,8 +96,8 @@ interface YearlyExpenseData {
   "Total Operational Costs": number;
   "Learning Expenses": number;
   "Research Expenses": number;
-  "Facilities Expenses": number;
-  "Students Expenses": number;
+  "Utilities Expenses": number;
+  "Community Engagement": number;
   count: number;
 }
 
@@ -110,13 +115,12 @@ const UNIVERSITY_SHORT_NAMES: Record<string, string> = {
   "university of british columbia": "UBC",
   "the university of british columbia": "UBC",
   "simon fraser university": "SFU", 
-  "university of victoria": "UVic",
-  "mcgill university": "McGill"
+  "university of victoria": "UVic"
 };
 
 // Helper function to get university short name
 const getUniversityShortName = (university: string): string => {
-  const normalizedName = university.toLowerCase().trim();
+  const normalizedName = university.toLowerCase().trim().replace(/^the\s+/, '');
   return UNIVERSITY_SHORT_NAMES[normalizedName] || university;
 };
 
@@ -205,6 +209,10 @@ export default function FinancialsDashboard() {
               ? ((currentValue - previousValue) / previousValue) * 100 
               : 0;
             
+            // Get university short name from payload or find it
+            const uniData = prepareTrendData().find(item => item.university === entry.name);
+            const uniShortName = uniData?.shortName || getUniversityShortName(entry.name);
+            
             return (
               <div key={`item-${index}`} className="flex justify-between items-center mb-1">
                 <div className="flex items-center">
@@ -212,7 +220,7 @@ export default function FinancialsDashboard() {
                     className="w-3 h-3 mr-2"
                     style={{ backgroundColor: entry.color }}
                   ></div>
-                  <span className="text-xs font-medium">{entry.name}</span>
+                  <span className="text-xs font-medium">{uniShortName}</span>
                 </div>
                 <div className="text-xs">
                   <span className="font-semibold">{formatCurrency(currentValue)}</span>
@@ -301,14 +309,10 @@ export default function FinancialsDashboard() {
       return [];
     }
     
-    const result: Record<string, ChartData> = {};
+    const result: Record<string, any> = {};
     
-    // Process financial data to extract revenue components
     filteredFinancialData.forEach((item) => {
       const key = groupBy === 'university' ? item.university : item.fiscal_year.toString();
-      
-      // Skip if key is not defined
-      if (!key) return;
       
       if (!result[key]) {
         result[key] = {
@@ -325,7 +329,7 @@ export default function FinancialsDashboard() {
         };
       }
       
-      // Accumulate revenue components
+      // Match the new schema from financial_results.json
       result[key]["Government Grants"] += item.government_grants || 0;
       result[key]["Tuition Fees"] += item.tuition_fees || 0;
       result[key]["Non-Gov Grants & Donations"] += item.non_government_grants_and_donations || 0;
@@ -354,14 +358,10 @@ export default function FinancialsDashboard() {
       return [];
     }
     
-    const result: Record<string, ChartData> = {};
+    const result: Record<string, any> = {};
     
-    // Process financial data to extract expense components
     filteredFinancialData.forEach((item) => {
       const key = groupBy === 'university' ? item.university : item.fiscal_year.toString();
-      
-      // Skip if key is not defined
-      if (!key) return;
       
       if (!result[key]) {
         result[key] = {
@@ -372,18 +372,20 @@ export default function FinancialsDashboard() {
           "Total Operational Costs": 0,
           "Learning Expenses": 0,
           "Research Expenses": 0,
-          "Facilities Expenses": 0,
-          "Students Expenses": 0,
+          "Utilities Expenses": 0,
+          "Community Engagement": 0,
+          "Faculty Salaries": 0,
           count: 0
         };
       }
       
-      // Accumulate expense components
+      // Match the new schema from financial_results.json
       result[key]["Total Operational Costs"] += item.total_operational_costs || 0;
       result[key]["Learning Expenses"] += item.learning_expenses || 0;
       result[key]["Research Expenses"] += item.research_expenses || 0;
-      result[key]["Facilities Expenses"] += item.facilities_expenses || 0;
-      result[key]["Students Expenses"] += item.students_expenses || 0;
+      result[key]["Utilities Expenses"] += item.utilities_expenses || 0;
+      result[key]["Community Engagement"] += item.community_engagement_expenses || 0;
+      result[key]["Faculty Salaries"] += item.faculty_salaries || 0;
       result[key].count++;
     });
     
@@ -423,6 +425,7 @@ export default function FinancialsDashboard() {
       if (!groupedData[uniName][year]) {
         groupedData[uniName][year] = {
           university: uniName,
+          shortName: getUniversityShortName(uniName),
           year: year,
           government_grants: 0,
           tuition_fees: 0,
@@ -801,21 +804,31 @@ export default function FinancialsDashboard() {
                 />
                 <YAxis tickFormatter={(value) => formatCurrency(value)} />
                 <Tooltip content={<TrendTooltip />} />
-                <Legend />
+                <Legend formatter={(value) => {
+                  // Find the university short name for this entry
+                  const uniName = value;
+                  const uniData = prepareTrendData().find(item => item.university === uniName);
+                  return uniData?.shortName || getUniversityShortName(uniName);
+                }} />
                 {
                   // Create a line for each unique university
-                  [...new Set(prepareTrendData().map(item => item.university))].map((uni, index) => (
-                    <Line
-                      key={uni as string}
-                      type="monotone"
-                      dataKey={selectedMetric}
-                      data={prepareTrendData().filter(item => item.university === uni)}
-                      name={uni as string}
-                      stroke={COLORS[index % COLORS.length]}
-                      activeDot={{ r: 8 }}
-                      connectNulls
-                    />
-                  ))
+                  [...new Set(prepareTrendData().map(item => item.university))].map((uni, index) => {
+                    const uniData = prepareTrendData().filter(item => item.university === uni);
+                    const shortName = uniData[0]?.shortName || getUniversityShortName(uni as string);
+                    
+                    return (
+                      <Line
+                        key={uni as string}
+                        type="monotone"
+                        dataKey={selectedMetric}
+                        data={uniData}
+                        name={uni as string}
+                        stroke={COLORS[index % COLORS.length]}
+                        activeDot={{ r: 8 }}
+                        connectNulls
+                      />
+                    );
+                  })
                 }
               </LineChart>
             </ResponsiveContainer>
@@ -975,8 +988,9 @@ export default function FinancialsDashboard() {
                 <YAxis 
                   label={{ value: 'Ratio', angle: -90, position: 'insideLeft' }}
                   domain={[0.7, 1.3]}
+                  tickFormatter={(value) => value.toFixed(2)}
                 />
-                <Tooltip />
+                <Tooltip formatter={(value) => [Number(value).toFixed(2), "Ratio"]} />
                 <Legend />
                 {
                   // Create a line for each unique university showing revenue/expense ratio

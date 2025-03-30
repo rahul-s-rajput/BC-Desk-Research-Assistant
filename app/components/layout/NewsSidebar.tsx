@@ -4,7 +4,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Search, RefreshCw, Info, Settings, X, Plus } from "lucide-react"
-import { useEffect, useState } from "react"
+import { useEffect, useState, useMemo } from "react"
 import {
   Dialog,
   DialogContent,
@@ -202,9 +202,22 @@ export default function NewsSidebar({ universities, kpis }: NewsSidebarProps) {
     }
   }
 
+  // Sort newsData by date before rendering
+  const sortedNewsData = useMemo(() => {
+    if (!newsData || newsData.length === 0) return [];
+    
+    return [...newsData].sort((a, b) => {
+      // Convert string dates to Date objects for comparison
+      const dateA = new Date(a.date);
+      const dateB = new Date(b.date);
+      // Sort by most recent first (descending order)
+      return dateB.getTime() - dateA.getTime();
+    });
+  }, [newsData]);
+
   return (
-    <div className="hidden lg:block w-[300px] border-l p-4">
-      <div className="flex items-center justify-between mb-4">
+    <div className="hidden lg:block w-[300px] border-l bg-background h-screen overflow-hidden">
+      <div className="flex items-center justify-between p-4 border-b">
         <div className="font-semibold">Higher Education News</div>
         <div className="flex items-center space-x-2">
           <button 
@@ -227,124 +240,46 @@ export default function NewsSidebar({ universities, kpis }: NewsSidebarProps) {
         </div>
       </div>
 
-      <div className="space-y-4">
+      <div className="h-[calc(100vh-64px)] overflow-y-auto p-4">
         {isLoading || isRefreshing ? (
           <div className="text-sm text-muted-foreground">
             {isRefreshing ? 'Refreshing news...' : 'Loading news...'}
           </div>
         ) : error ? (
           <div className="text-sm text-red-500">{error}</div>
-        ) : newsData.length === 0 ? (
+        ) : sortedNewsData.length === 0 ? (
           <div className="text-sm text-muted-foreground">No news available</div>
         ) : (
-          newsData.slice(0, 5).map((item, index) => (
-            <div key={index} className="border-b pb-2 last:border-0">
-              <div className="flex justify-between items-start">
-                <a 
-                  href={item.url} 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="font-medium text-sm hover:underline line-clamp-2 flex-1"
-                >
-                  {item.title}
-                </a>
-                <button 
-                  onClick={() => toggleDetail(index)}
-                  className="text-gray-400 hover:text-gray-600 ml-1 flex-shrink-0"
-                  title="Show details"
-                >
-                  <Info className="w-3 h-3" />
-                </button>
+          <div className="space-y-4">
+            {sortedNewsData.map((item, index) => (
+              <div key={index} className="border-b pb-2 last:border-0">
+                <div className="flex justify-between items-start">
+                  <a 
+                    href={item.url} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="font-medium text-sm hover:underline line-clamp-2 flex-1"
+                  >
+                    {item.title}
+                  </a>
+                  <button 
+                    onClick={() => toggleDetail(index)}
+                    className="text-gray-400 hover:text-gray-600 ml-1 flex-shrink-0"
+                    title="Show details"
+                  >
+                    <Info className="w-3 h-3" />
+                  </button>
+                </div>
+                <p className="text-xs text-muted-foreground">{formatDate(item.date)}</p>
+                {showDetail === index && (
+                  <p className="text-xs mt-1 text-gray-600 bg-gray-50 p-2 rounded">
+                    {item.summary}
+                  </p>
+                )}
               </div>
-              <p className="text-xs text-muted-foreground">{formatDate(item.date)}</p>
-              {showDetail === index && (
-                <p className="text-xs mt-1 text-gray-600 bg-gray-50 p-2 rounded">
-                  {item.summary}
-                </p>
-              )}
-            </div>
-          ))
+            ))}
+          </div>
         )}
-      </div>
-
-      <div className="mt-8">
-        <div className="font-semibold mb-4">Previously Viewed Universities</div>
-
-        <div className="space-y-3">
-          {universities.map((uni, index) => (
-            <div key={uni} className="flex items-center gap-2">
-              <div className="w-6 h-6 bg-gray-200 rounded-sm flex items-center justify-center text-xs">
-                {uni
-                  .split(" ")
-                  .map((word) => word[0])
-                  .join("")
-                  .slice(0, 3)}
-              </div>
-              <span className="text-sm">{uni}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="mt-8">
-        <div className="font-semibold mb-4">Filter</div>
-
-        <div className="relative mb-4">
-          <Search className="w-4 h-4 absolute left-2.5 top-2.5 text-muted-foreground" />
-          <Input className="h-9 pl-8 pr-4 w-full" placeholder="Search" />
-        </div>
-
-        <div className="space-y-2">
-          <div className="flex items-center space-x-2">
-            <Checkbox id="public" />
-            <label
-              htmlFor="public"
-              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-            >
-              Public Universities
-            </label>
-          </div>
-
-          <div className="flex items-center space-x-2">
-            <Checkbox id="community" />
-            <label
-              htmlFor="community"
-              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-            >
-              Community Colleges
-            </label>
-          </div>
-
-          <div className="flex items-center space-x-2">
-            <Checkbox id="polytechnic" />
-            <label
-              htmlFor="polytechnic"
-              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-            >
-              Polytechnic Colleges
-            </label>
-          </div>
-
-          <div className="flex items-center space-x-2">
-            <Checkbox id="4year" />
-            <label
-              htmlFor="4year"
-              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-            >
-              4-Year Schools
-            </label>
-          </div>
-
-          <div className="flex items-center space-x-2">
-            <Checkbox id="research" />
-            <label
-              htmlFor="research"
-              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-            >
-              Research Universities
-            </label>
-          </div>
-        </div>
       </div>
 
       {/* Sources Edit Dialog */}

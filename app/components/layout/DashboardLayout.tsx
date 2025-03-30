@@ -2,7 +2,6 @@
 
 import { ReactNode, useState } from "react"
 import Sidebar from "./Sidebar"
-import Header from "./Header"
 import FilterBar from "./FilterBar"
 import NewsSidebar from "./NewsSidebar"
 import { useDashboard } from "../../context/DashboardContext"
@@ -50,35 +49,38 @@ export default function DashboardLayout({
   }
 
   return (
-    <div className="flex h-screen w-full bg-background">
-      {/* Sidebar */}
-      <Sidebar activeTab={activeTab} sidebarTab={sidebarTab} setSidebarTab={setSidebarTab} />
+    <div className="flex h-screen w-full bg-background overflow-hidden">
+      {/* Left Sidebar - sticky */}
+      <div className="sticky top-0 h-screen">
+        <Sidebar activeTab={activeTab} sidebarTab={sidebarTab} setSidebarTab={setSidebarTab} />
+      </div>
 
-      {/* Main Content */}
+      {/* Main Content - scrollable */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Top Navigation */}
-        <Header />
-
         {/* Dashboard Content */}
-        <div className="flex-1 overflow-auto">
-          <div className="flex">
-            {/* Main Dashboard */}
-            <div className="flex-1 p-4">
-              <FilterBar
-                selectedUniversities={selectedUniversities}
-                setSelectedUniversities={setSelectedUniversities}
-                selectedYears={selectedYears}
-                setSelectedYears={setSelectedYears}
-                universities={universities}
-                years={getFilterYears()}
-                activeTab={activeTab}
-              />
+        <div className="flex flex-1 overflow-hidden">
+          {/* Main Dashboard - scrollable */}
+          <div className="flex-1 overflow-auto h-screen">
+            <div className="p-4">
+              {activeTab !== "chatbot" && (
+                <FilterBar
+                  selectedUniversities={selectedUniversities}
+                  setSelectedUniversities={setSelectedUniversities}
+                  selectedYears={selectedYears}
+                  setSelectedYears={setSelectedYears}
+                  universities={universities}
+                  years={getFilterYears()}
+                  activeTab={activeTab}
+                />
+              )}
               
               {/* Main content (children) */}
               {children}
             </div>
+          </div>
 
-            {/* Right Sidebar */}
+          {/* Right Sidebar - sticky */}
+          <div className="sticky top-0 h-screen">
             <NewsSidebar universities={universities} kpis={kpis} />
           </div>
         </div>

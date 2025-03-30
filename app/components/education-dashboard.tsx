@@ -508,7 +508,7 @@ useEffect(() => {
       <div className="hidden md:flex flex-col w-[220px] border-r bg-background">
         <div className="flex items-center gap-2 p-4 border-b">
           <div className="w-6 h-6 rounded-full bg-slate-800"></div>
-          <span className="font-semibold text-sm">DASHBOARD NAME</span>
+          <span className="font-semibold text-sm">EDUSENSE</span>
         </div>
 
         <div className="flex border-b">
